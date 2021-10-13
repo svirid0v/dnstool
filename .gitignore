@@ -8,6 +8,7 @@ dnstool.iml
 *.dll
 *.so
 *.dylib
+dnstool
 
 # Test binary, built with `go test -c`
 *.test

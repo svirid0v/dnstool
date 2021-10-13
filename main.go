@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	logger "log"
-	"net"
 	"os"
 	"os/exec"
 	"strings"
@@ -34,16 +33,12 @@ func main() {
 		upstreamDNS = os.Getenv("UPSTREAM_DNS")
 	}
 
-	adjustedDNS := strings.ReplaceAll(upstreamDNS, ";", " ")
-	cleanDNS := strings.Split(adjustedDNS, " ")
-
-	for _, s := range cleanDNS {
-		if err := net.ParseIP(s); err == nil {
-			log.Fatalf("IP address: %s is not valid", s)
-		}
+	dns := cleanIP(upstreamDNS)
+	if err := isIP(dns); err != nil {
+		log.Fatal(err)
 	}
 
-	if err := writeResolverConfiguration(cleanDNS); err != nil {
+	if err := writeResolverConfiguration(dns); err != nil {
 		log.Fatal(err)
 	}
 
@@ -123,14 +118,15 @@ func bootstrapDNS() error {
 }
 
 func checkGenericCache(useGenericCache, cacheIP string) error {
+	ips := cleanIP(cacheIP)
+
 	if useGenericCache == "true" {
 		if cacheIP == "" {
 			return fmt.Errorf("If you are using USE_GENERIC_CACHE then you must set LANCACHE_IP")
 		}
-	} else {
-		if cacheIP != "" {
-			return fmt.Errorf("If you are using LANCACHE_IP then you must set USE_GENERIC_CACHE=true")
-		}
+		return isPrivateIP(ips)
+	} else if cacheIP != "" {
+		return fmt.Errorf("If you are using LANCACHE_IP then you must set USE_GENERIC_CACHE=true")
 	}
 
 	return nil
@@ -310,8 +306,8 @@ func generateService(genericCache, cacheIP, cacheZone, lancacheDNSDomain, servic
 				return err
 			}
 
-			cleanIP := strings.Split(ip, " ")
-			for _, ip := range cleanIP {
+			ips := cleanIP(ip)
+			for _, ip := range ips {
 				c, err := os.OpenFile(cacheZone, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 				if err != nil {
 					return err
