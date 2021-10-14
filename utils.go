@@ -9,7 +9,7 @@ import (
 // cleanIP replaces all semi-colons with spaces and returns a slice map of IP addresses.
 func cleanIP(servers string) []string {
 	s := strings.ReplaceAll(servers, ";", " ")
-	return strings.Split(s, " ")
+	return strings.Fields(s)
 }
 
 // isIP checks if IP(s) specified are valid IP addresses.
@@ -40,13 +40,14 @@ func isPrivateIP(ip []string) error {
 }
 
 // reverseIPv4 reverses IP segments/octets for building PTR like addresses.
-func reverseIPv4(slice []string) string {
-	for i := 0; i < len(slice)/2; i++ {
-		j := len(slice) - i - 1
-		slice[i], slice[j] = slice[j], slice[i]
+func reverseIPv4(address string) string {
+	s := strings.Split(address, ".")
+	for i := 0; i < len(s)/2; i++ {
+		j := len(s) - i - 1
+		s[i], s[j] = s[j], s[i]
 	}
 
-	ip := net.ParseIP(strings.Join(slice, ".")).To4()
+	ip := net.ParseIP(strings.Join(s, ".")).To4()
 	if ip == nil {
 		return ""
 	}

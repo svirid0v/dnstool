@@ -51,7 +51,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := generateConfiguration(useGenericCache, lancacheDNSDomain, cacheIP, cacheZone); err != nil {
+	if err := generateConfiguration(useGenericCache, lancacheDNSDomain, cacheIP, cacheZone, dns); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -124,6 +124,7 @@ func checkGenericCache(useGenericCache, cacheIP string) error {
 		if cacheIP == "" {
 			return fmt.Errorf("If you are using USE_GENERIC_CACHE then you must set LANCACHE_IP")
 		}
+
 		return isPrivateIP(ips)
 	} else if cacheIP != "" {
 		return fmt.Errorf("If you are using LANCACHE_IP then you must set USE_GENERIC_CACHE=true")
@@ -132,7 +133,7 @@ func checkGenericCache(useGenericCache, cacheIP string) error {
 	return nil
 }
 
-func generateConfiguration(useGenericCache, lancacheDNSDomain, cacheIP, cacheZone string) error {
+func generateConfiguration(useGenericCache, lancacheDNSDomain, cacheIP, cacheZone string, dns []string) error {
 	if useGenericCache == "true" {
 		log.Print("")
 		log.Print("----------------------------------------------------------------------")
@@ -168,7 +169,7 @@ func generateConfiguration(useGenericCache, lancacheDNSDomain, cacheIP, cacheZon
 
 `)
 
-	if err := finaliseConfiguration(); err != nil {
+	if err := finaliseConfiguration(dns); err != nil {
 		return err
 	}
 
@@ -307,6 +308,10 @@ func generateService(genericCache, cacheIP, cacheZone, lancacheDNSDomain, servic
 			}
 
 			ips := cleanIP(ip)
+			if err := isPrivateIP(ips); err != nil {
+				return err
+			}
+
 			for _, ip := range ips {
 				c, err := os.OpenFile(cacheZone, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 				if err != nil {
@@ -326,7 +331,7 @@ func generateService(genericCache, cacheIP, cacheZone, lancacheDNSDomain, servic
 
 				defer r.Close()
 
-				revIP := reverseIPv4(strings.Split(ip, "."))
+				revIP := reverseIPv4(ip)
 				if _, err = fmt.Fprintln(r, `32.`+revIP+`.rpz-client-ip      CNAME rpz-passthru.;`); err != nil {
 					return err
 				}
@@ -385,10 +390,14 @@ func generateDomains(serviceFile, lancacheDNSDomain, service string) error {
 	return nil
 }
 
-func finaliseConfiguration() error {
+func finaliseConfiguration(dns []string) error {
 	if ip := os.Getenv("PASSTHRU_IPS"); ip != "" {
-		cleanIP := strings.Split(ip, " ")
-		for _, ip := range cleanIP {
+		ips := cleanIP(ip)
+		if err := isIP(ips); err != nil {
+			return err
+		}
+
+		for _, ip := range ips {
 			f, err := os.OpenFile(rpzZone, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 			if err != nil {
 				return err
@@ -400,7 +409,7 @@ func finaliseConfiguration() error {
 				return err
 			}
 
-			revIP := reverseIPv4(strings.Split(ip, "."))
+			revIP := reverseIPv4(ip)
 			if _, err = fmt.Fprintln(f, `32.`+revIP+`.rpz-client-ip      CNAME rpz-passthru.`); err != nil {
 				return err
 			}
@@ -431,7 +440,7 @@ func finaliseConfiguration() error {
 		return err
 	}
 
-	if dns := os.Getenv("UPSTREAM_DNS"); dns != "" {
+	if dns != nil {
 		f, err := ioutil.ReadFile(namedConf)
 		if err != nil {
 			return err
@@ -439,9 +448,9 @@ func finaliseConfiguration() error {
 
 		lines := strings.Split(string(f), "\n")
 
-		r := strings.NewReplacer("#ENABLE_UPSTREAM_DNS#", "", "dns_ip", dns)
+		r := strings.NewReplacer("#ENABLE_UPSTREAM_DNS#", "", "dns_ip", strings.Join(dns, "; "))
 		if dnssec := os.Getenv("ENABLE_DNSSEC_VALIDATION"); dnssec == "true" {
-			r = strings.NewReplacer("#ENABLE_UPSTREAM_DNS#", "", "dns_ip", dns, "dnssec-validation no", "dnssec-validation auto")
+			r = strings.NewReplacer("#ENABLE_UPSTREAM_DNS#", "", "dns_ip", strings.Join(dns, "; "), "dnssec-validation no", "dnssec-validation auto")
 		}
 
 		for i, line := range lines {
