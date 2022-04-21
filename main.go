@@ -360,7 +360,13 @@ func generateDomains(serviceFile, lancacheDNSDomain, service string) error {
 		return err
 	}
 
+	r, err := os.OpenFile(rpzZone, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+
 	defer f.Close()
+	defer r.Close()
 
 	reader := bufio.NewReader(f)
 
@@ -374,13 +380,6 @@ func generateDomains(serviceFile, lancacheDNSDomain, service string) error {
 		if strings.HasPrefix(string(line), "#") {
 			continue
 		}
-
-		r, err := os.OpenFile(rpzZone, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			return err
-		}
-
-		defer r.Close()
 
 		if _, err = fmt.Fprintln(r, strings.TrimSpace(string(line))+" IN CNAME "+service+"."+lancacheDNSDomain+".;"); err != nil {
 			return err
