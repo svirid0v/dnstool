@@ -382,7 +382,7 @@ func generateDomains(serviceFile, lancacheDNSDomain, service string) error {
 
 		defer r.Close()
 
-		if _, err = fmt.Fprintln(r, string(line)+` IN CNAME `+service+`.`+lancacheDNSDomain+`.;`); err != nil {
+		if _, err = fmt.Fprintln(r, strings.TrimSpace(string(line))+" IN CNAME "+service+"."+lancacheDNSDomain+".;"); err != nil {
 			return err
 		}
 	}
