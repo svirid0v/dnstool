@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// cleanIP replaces all semi-colons with spaces and returns a slice map of IP addresses.
+// cleanIP replaces all semicolons with spaces and returns a slice map of IP addresses.
 func cleanIP(servers string) []string {
 	s := strings.ReplaceAll(servers, ";", " ")
 	return strings.Fields(s)
