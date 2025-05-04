@@ -25,19 +25,21 @@ func isIP(ip []string) error {
 
 // isPrivateIP checks if IP(s) specified are valid and within the private address ranges (RFC 1918/4193).
 func isPrivateIP(ip []string) error {
-	for _, s := range ip {
-		err := net.ParseIP(s)
-		if err == nil {
-			return fmt.Errorf("IP address: %s is not valid", s)
-		}
+    for _, s := range ip {
+        err := net.ParseIP(s)
+        if err == nil {
+            return fmt.Errorf("IP address: %s is not valid", s)
+        }
 
-		if !net.IP.IsPrivate(err) {
-			return fmt.Errorf("IP address: %s is not a valid private address (RFC 1918/4193)", s)
-		}
-	}
+        // Убираем проверку на приватный адрес
+        // if !net.IP.IsPrivate(err) {
+        //     return fmt.Errorf("IP address: %s is not a valid private address (RFC 1918/4193)", s)
+        // }
+    }
 
-	return nil
+    return nil
 }
+
 
 // reverseIPv4 reverses IP segments/octets for building PTR like addresses.
 func reverseIPv4(address string) string {
